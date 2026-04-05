@@ -1,12 +1,19 @@
 import os
 import pandas as pd
 import pyotp
-from dotenv import load_dotenv
-
-load_dotenv()
 
 EXCEL_DB = "usuarios_master.xlsx"
-USERNAME = os.getenv("ADMIN_USER", "user.1")
+
+def mostrar_banner():
+    banner = """
+    ====================================================
+               EBROMARES AJAW INTELLIGENCE             
+                    CUSTOS SUB DEO                     
+                                                       
+              E.I.A. GUARDIAN GATEWAY v1.0             
+    ====================================================
+    """
+    print(banner)
 
 def mostrar_logo():
     logo = r"""
@@ -50,8 +57,9 @@ def mostrar_logo():
     print(logo)
 
 def inicializar_bd():
+    # Se agrega de nuevo la columna 'Telefono'
     if not os.path.exists(EXCEL_DB):
-        df = pd.DataFrame(columns=["Usuario", "Contraseña_TOTP"])
+        df = pd.DataFrame(columns=["Usuario", "Secreto_TOTP", "Telefono"])
         df.to_excel(EXCEL_DB, index=False)
 
 def usuario_existe(usuario):
@@ -60,39 +68,45 @@ def usuario_existe(usuario):
     df = pd.read_excel(EXCEL_DB)
     return not df[df['Usuario'] == usuario].empty
 
-def guardar_usuario(usuario, secreto):
+def guardar_usuario(usuario, secreto, telefono):
     df = pd.read_excel(EXCEL_DB)
     nuevo_registro = pd.DataFrame([{
         "Usuario": usuario, 
-        "Contraseña_TOTP": secreto
+        "Secreto_TOTP": secreto,
+        "Telefono": telefono
     }])
     df = pd.concat([df, nuevo_registro], ignore_index=True)
     df.to_excel(EXCEL_DB, index=False)
 
 def provisionar_administrador():
     mostrar_logo()
-    print("Iniciando secuencia de generar codigo en Google Authenticator...")
-    print("Generando código...")
-    print("Copia y pega el código generado en Google Authenticator.")
-
-
     
+    # === INTERFAZ DE CAPTURA DE DATOS ===
+    print("\n[+] MÓDULO DE REGISTRO EIA GUARDIAN [+]")
+    username_input = input("Ingrese el nuevo User ID: ").strip()
+    
+    if not username_input:
+        print("[-] Error: El User ID no puede estar vacío.")
+        return
+        
+    telefono_input = input("Ingrese el número de teléfono: ").strip()
+    
+    print("\nIniciando secuencia de aprovisionamiento...")
     inicializar_bd()
 
-    if usuario_existe(USERNAME):
-        print("Operación abortada: El usuario ya se encuentra registrado.")
+    if usuario_existe(username_input):
+        print(f"[-] Operación abortada: El usuario '{username_input}' ya se encuentra registrado.")
         return
 
     # Generar el secreto para Google Authenticator
     secreto_totp = pyotp.random_base32()
     
-    # Guardar en Excel sin el teléfono
-    guardar_usuario(USERNAME, secreto_totp)
+    # Guardar en Excel
+    guardar_usuario(username_input, secreto_totp, telefono_input)
     
-    print(f"Administrador '{USERNAME}' Vincula en Google Authenticator.")
-    print("Name: EIA Guardian")
-
-    print(f"TU CONTRASEÑA (Guárdalo ahora): {secreto_totp}")
+    print(f"\n[+] Administrador '{username_input}' aprovisionado exitosamente.")
+    print("[!] Vincula el siguiente secreto en Google Authenticator para habilitar el 2FA.")
+    print(f"[!] TU CÓDIGO SECRETO: {secreto_totp}\n")
 
 if __name__ == "__main__":
     provisionar_administrador()
